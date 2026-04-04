@@ -7,13 +7,13 @@ st.set_page_config(page_title="Team Prediction App", layout="centered")
 st.title("Team Prediction App")
 
 st.markdown("""
-### 📊 About This App
+### About This
 
 This tool uses machine learning to model relationships between team performance metrics and postseason outcomes.
 
 ---
 
-### 🔄 How to Use
+### How to Use
 
 **Forward Mode**
 - Input: Availability + Conference Win %
@@ -25,7 +25,7 @@ This tool uses machine learning to model relationships between team performance 
 
 ---
 
-### ⚠️ Important Notes
+### Important Notes
 
 - Predictions are based on historical patterns, not guarantees
 - Reverse predictions are approximate (multiple input combinations can produce similar outcomes)
@@ -33,7 +33,7 @@ This tool uses machine learning to model relationships between team performance 
 
 ---
 
-### 💡 Purpose
+### Purpose
 
 This app is designed to explore:
 - How team performance metrics relate to postseason success
