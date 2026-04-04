@@ -5,6 +5,41 @@ from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 st.set_page_config(page_title="Team Prediction App", layout="centered")
 
 st.title("Team Prediction App")
+
+st.markdown("""
+### 📊 About This App
+
+This tool uses machine learning to model relationships between team performance metrics and postseason outcomes.
+
+---
+
+### 🔄 How to Use
+
+**Forward Mode**
+- Input: Availability + Conference Win %
+- Output: Postseason (0/1), Conference Rank, Postseason Efficiency
+
+**Reverse Mode**
+- Input: Postseason, Conference Rank, Postseason Efficiency
+- Output: Estimated Availability and Conference Win %
+
+---
+
+### ⚠️ Important Notes
+
+- Predictions are based on historical patterns, not guarantees
+- Reverse predictions are approximate (multiple input combinations can produce similar outcomes)
+- Results should be interpreted as **estimates**, not exact values
+
+---
+
+### 💡 Purpose
+
+This app is designed to explore:
+- How team performance metrics relate to postseason success
+- What conditions might lead to certain outcomes
+""")
+
 st.write("Forward and reverse prediction tool")
 
 # Load data
