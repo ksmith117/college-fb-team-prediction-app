@@ -5,7 +5,7 @@ from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 st.title("Team Prediction App")
 
 # Load data
-data = pd.read_csv("your_dataset.csv")
+data = pd.read_csv("FB_All_Conf.csv")
 data.columns = data.columns.str.strip()
 
 # Fix availability
