@@ -1,4 +1,4 @@
-# Team Prediction App
+# College Football Team Prediction App
 
 This project is a machine learning web app that predicts team performance and postseason outcomes.
 
