@@ -15,7 +15,7 @@ This tool models relationships between team performance and postseason outcomes.
 ### Key Outputs
 - Postseason Qualification (0/1)
 - Conference Rank
-- Postseason Success Probability
+- Probability of Making Postseason
 - Postseason Efficiency
 - Efficiency Tier
 """)
@@ -127,7 +127,7 @@ if mode == "Forward":
 
         st.write("### Results")
         st.write(f"**Postseason Qualification:** {post}")
-        st.write(f"**Postseason Success Probability:** {round(prob, 3)}")
+        st.write(f"**Probability of Making Postseason:** {round(prob, 3)}")
         st.write(f"**Conference Rank:** {round(rank, 2)}")
         st.write(f"**Postseason Efficiency:** {round(eff, 3)}")
         st.write(f"**Efficiency Tier:** {tier}")
