@@ -49,9 +49,12 @@ Outputs:
 
 ## Data Sources
 
-- Data was compiled from official conference athletics websites for the **2025–2026 college football season**
+## 🏈 Data Sources
+
+- Data was compiled from official athletics websites for the **Power 4 conferences (ACC, Big Ten, Big 12, SEC)** during the 2025–2026 college football season
+- Postseason performance data was aggregated and standardized across conferences to create a unified modeling dataset
 - Postseason results were weighted based on game importance (e.g., bowl games vs playoff games)
-- Metrics were standardized across conferences for modeling consistency
+- Metrics were aligned across sources to ensure consistency in analysis
 
 ---
 
