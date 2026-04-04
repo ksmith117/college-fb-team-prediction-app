@@ -4,7 +4,7 @@ from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 
 st.set_page_config(page_title="Team Prediction App", layout="centered")
 
-st.title("Team Prediction App")
+st.title("College Football Team Prediction App")
 
 st.markdown("""
 ### About This
@@ -16,10 +16,12 @@ This tool uses machine learning to model relationships between team performance 
 ### How to Use
 
 **Forward Mode**
+- Select a conference
 - Input: Availability + Conference Win %
 - Output: Postseason (0/1), Conference Rank, Postseason Efficiency
 
 **Reverse Mode**
+- Select a conference
 - Input: Postseason, Conference Rank, Postseason Efficiency
 - Output: Estimated Availability and Conference Win %
 
@@ -30,6 +32,7 @@ This tool uses machine learning to model relationships between team performance 
 - Predictions are based on historical patterns, not guarantees
 - Reverse predictions are approximate (multiple input combinations can produce similar outcomes)
 - Results should be interpreted as **estimates**, not exact values
+- Source data were compiled from official conference athletics websites for the 2025–2026 football season
 
 ---
 
@@ -38,11 +41,14 @@ This tool uses machine learning to model relationships between team performance 
 This app is designed to explore:
 - How team performance metrics relate to postseason success
 - What conditions might lead to certain outcomes
+- How results differ across conferences
 """)
 
 st.write("Forward and reverse prediction tool")
 
-# Load data
+# -----------------------
+# LOAD DATA
+# -----------------------
 data = pd.read_csv("FB_All_Conf.csv")
 data.columns = data.columns.str.strip()
 
@@ -56,6 +62,7 @@ data["availability"] = (
 
 # Drop missing values in needed columns
 data = data.dropna(subset=[
+    "conference",
     "availability",
     "conf_win_pct",
     "postseason",
@@ -64,15 +71,29 @@ data = data.dropna(subset=[
 ])
 
 # -----------------------
+# CONFERENCE SELECTION
+# -----------------------
+conferences = sorted(data["conference"].dropna().unique())
+selected_conf = st.selectbox("Select Conference", conferences)
+
+filtered_data = data[data["conference"] == selected_conf]
+
+if len(filtered_data) < 5:
+    st.warning("Not enough data for this conference to build a reliable model.")
+    st.stop()
+
+st.caption(f"Using data for: {selected_conf}")
+
+# -----------------------
 # TRAIN FORWARD MODELS
 # Inputs: availability, conf_win_pct
 # Outputs: postseason, conf_rank, weighted_postseason_eff
 # -----------------------
-X1 = data[["availability", "conf_win_pct"]]
+X1 = filtered_data[["availability", "conf_win_pct"]]
 
-y_post = data["postseason"]
-y_rank = data["conf_rank"]
-y_eff = data["weighted_postseason_eff"]
+y_post = filtered_data["postseason"]
+y_rank = filtered_data["conf_rank"]
+y_eff = filtered_data["weighted_postseason_eff"]
 
 model_post = RandomForestClassifier(random_state=42)
 model_rank = RandomForestRegressor(random_state=42)
@@ -87,10 +108,10 @@ model_eff.fit(X1, y_eff)
 # Inputs: postseason, conf_rank, weighted_postseason_eff
 # Outputs: availability, conf_win_pct
 # -----------------------
-X2 = data[["postseason", "conf_rank", "weighted_postseason_eff"]]
+X2 = filtered_data[["postseason", "conf_rank", "weighted_postseason_eff"]]
 
-y_avail = data["availability"]
-y_conf = data["conf_win_pct"]
+y_avail = filtered_data["availability"]
+y_conf = filtered_data["conf_win_pct"]
 
 model_avail = RandomForestRegressor(random_state=42)
 model_conf = RandomForestRegressor(random_state=42)
@@ -107,7 +128,7 @@ mode = st.radio("Choose Prediction Mode", ["Forward", "Reverse"])
 # FORWARD MODE
 # -----------------------
 if mode == "Forward":
-    st.subheader("Forward Prediction")
+    st.subheader(f"Forward Prediction — {selected_conf}")
 
     availability = st.number_input(
         "Availability",
@@ -137,6 +158,7 @@ if mode == "Forward":
         eff = float(model_eff.predict(X)[0])
 
         st.write("### Results")
+        st.write(f"**Conference:** {selected_conf}")
         st.write(f"**Postseason:** {post}")
         st.write(f"**Probability of Postseason:** {round(prob, 3)}")
         st.write(f"**Conference Rank:** {round(rank, 2)}")
@@ -146,7 +168,7 @@ if mode == "Forward":
 # REVERSE MODE
 # -----------------------
 else:
-    st.subheader("Reverse Prediction")
+    st.subheader(f"Reverse Prediction — {selected_conf}")
 
     postseason = st.number_input(
         "Postseason (0 or 1)",
@@ -182,6 +204,7 @@ else:
         conf_pred = float(model_conf.predict(X)[0])
 
         st.write("### Results")
+        st.write(f"**Conference:** {selected_conf}")
         st.write(f"**Predicted Availability:** {round(avail_pred, 3)}")
         st.write(f"**Predicted Conference Win %:** {round(conf_pred, 3)}")
 
@@ -190,5 +213,6 @@ st.markdown("""
 ### Notes
 - Forward predictions estimate postseason outcome, conference rank, and weighted postseason efficiency.
 - Reverse predictions estimate the availability and conference win percentage associated with a given outcome profile.
+- Predictions are generated using only the selected conference's data.
 - Predictions are based on historical data patterns and should be interpreted as estimates, not guarantees.
 """)
