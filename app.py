@@ -177,17 +177,35 @@ if mode == "Forward":
         st.write(
             f"This model predicts that a team with an availability of {availability:.2f} "
             f"and a conference win percentage of {conf_win_pct:.2f} has a "
-            f"{round(prob*100,1)}% chance of making the postseason. "
-            f"If they qualify, they are expected to finish around rank {round(rank,1)} "
+            f"{round(prob * 100, 1)}% chance of making the postseason. "
+            f"If they qualify, they are expected to finish around rank {round(rank, 1)} "
             f"in their conference and perform at a '{tier}' postseason efficiency level."
         )
 
         st.markdown("### Metric Explanations")
-        st.write(f"**Postseason Qualification ({post})**: Indicates whether the team is predicted to make the postseason (1 = yes, 0 = no).")
-        st.write(f"**Postseason Qualification Probability ({round(prob,3)})**: The model's confidence that the team will make the postseason based on availability and conference performance.")
-        st.write(f"**Conference Rank ({round(rank,2)})**: The team's expected final standing within its conference.")
-        st.write(f"**Postseason Efficiency ({round(eff,3)})**: A custom metric that estimates how well the team is expected to perform in postseason play, accounting for both success and game importance.")
-        st.write(f"**Efficiency Tier ({tier})**: A label that translates the efficiency score into an easier performance category.")
+        st.write(
+            f"**Postseason Qualification ({post})**: "
+            "Indicates whether the model predicts the team will make the postseason "
+            "(1 = yes, 0 = no)."
+        )
+        st.write(
+            f"**Postseason Qualification Probability ({round(prob, 3)})**: "
+            "Shows the model's confidence that the team will make the postseason "
+            "based on its availability and conference win percentage."
+        )
+        st.write(
+            f"**Conference Rank ({round(rank, 2)})**: "
+            "Estimates where the team would finish relative to others in its conference."
+        )
+        st.write(
+            f"**Postseason Efficiency ({round(eff, 3)})**: "
+            "A custom metric that combines postseason success and game importance to estimate "
+            "how strong the team's postseason performance would be."
+        )
+        st.write(
+            f"**Efficiency Tier ({tier})**: "
+            "Translates the efficiency score into an easier-to-read performance category."
+        )
 
 # -----------------------
 # REVERSE MODE
@@ -215,7 +233,7 @@ else:
         "Postseason Efficiency",
         min_value=0.0,
         max_value=4.5,
-        value=1.0,
+        value=1.00,
         step=0.01
     )
 
@@ -243,19 +261,31 @@ else:
         st.markdown("### What This Means")
         st.write(
             f"To reach a postseason outcome of {postseason} with a conference rank of {conf_rank}, "
-            f"a team would likely need an availability of about {round(avail_pred,3)} "
-            f"and a conference win percentage of about {round(conf_pred,3)}. "
-            f"This target profile corresponds to a '{tier}' postseason efficiency level."
+            f"a team would likely need an availability of about {round(avail_pred, 3)} "
+            f"and a conference win percentage of about {round(conf_pred, 3)}. "
+            f"This corresponds to a '{tier}' level of postseason performance."
         )
 
         st.markdown("### Metric Explanations")
-        st.write(f"**Predicted Availability ({round(avail_pred,3)})**: The estimated player availability level associated with this outcome profile.")
-        st.write(f"**Predicted Conference Win % ({round(conf_pred,3)})**: The estimated in-conference win rate associated with this outcome profile.")
-        st.write(f"**Efficiency Tier ({tier})**: The performance category tied to the selected postseason efficiency value.")
+        st.write(
+            f"**Predicted Availability ({round(avail_pred, 3)})**: "
+            "Represents the level of player availability typically associated with achieving "
+            "the selected outcome profile."
+        )
+        st.write(
+            f"**Predicted Conference Win % ({round(conf_pred, 3)})**: "
+            "Represents the in-conference win rate typically associated with achieving "
+            "the selected outcome profile."
+        )
+        st.write(
+            f"**Efficiency Tier ({tier})**: "
+            "Categorizes the selected postseason efficiency into an easier-to-understand "
+            "performance level."
+        )
 
 st.markdown("""
 ---
-### Efficiency Interpretation (Football)
+### Efficiency Interpretation
 
 - 0.00 → No Postseason Appearance
 - 0.01–0.74 → Below Average
