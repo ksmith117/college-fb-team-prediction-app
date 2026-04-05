@@ -26,6 +26,36 @@ This tool models relationships between team performance and postseason outcomes.
 """)
 
 # -----------------------
+# HELPERS
+# -----------------------
+def clean_numeric(series, percent=False):
+    """
+    Force a column to numeric by:
+    - converting to string
+    - stripping spaces
+    - removing percent signs and commas
+    - removing any non-numeric characters except . and -
+    - converting to numeric
+    - dividing by 100 if percent=True and values look like 0-100 scale
+    """
+    s = (
+        series.astype(str)
+        .str.strip()
+        .str.replace("%", "", regex=False)
+        .str.replace(",", "", regex=False)
+        .str.replace(r"[^\d.\-]", "", regex=True)
+    )
+    s = pd.to_numeric(s, errors="coerce")
+
+    if percent:
+        # If values are stored like 91.13 instead of 0.9113
+        if s.dropna().max() is not None and len(s.dropna()) > 0 and s.dropna().max() > 1:
+            s = s / 100
+
+    return s
+
+
+# -----------------------
 # LOAD DATA
 # -----------------------
 data = pd.read_csv("FB_All_Conf.csv")
@@ -38,46 +68,41 @@ data.columns = (
     .str.replace(r"[^\w_]", "", regex=True)
 )
 
+# Normalize known column name variants
 data = data.rename(columns={
     "conference_ranking": "conf_rank",
     "conference_rank": "conf_rank",
     "postseasoneff": "postseason_eff",
     "postseason_efficiency": "postseason_eff",
+    "weighted_postseason_eff": "postseason_eff",
     "conf_win_percent": "conf_win_pct",
     "conf_win_percentage": "conf_win_pct",
+    "conference_win_pct": "conf_win_pct",
+    "conference_win_percentage": "conf_win_pct",
     "win_percent": "win_pct",
-    "weighted_postseason_eff": "postseason_eff"
 })
 
-# Clean availability
-data["availability"] = (
-    data["availability"]
-    .astype(str)
-    .str.replace("%", "", regex=False)
-)
+required_cols = ["conference", "availability", "conf_win_pct", "postseason", "conf_rank", "postseason_eff"]
 
-# Force numeric conversion
-numeric_cols = ["availability", "conf_win_pct", "postseason", "conf_rank", "postseason_eff"]
-for col in numeric_cols:
-    data[col] = pd.to_numeric(data[col], errors="coerce")
+missing_cols = [col for col in required_cols if col not in data.columns]
+if missing_cols:
+    st.error(f"Missing required columns in CSV: {missing_cols}")
+    st.write("Available columns:", data.columns.tolist())
+    st.stop()
 
-# Convert availability from percent to decimal if needed
-if data["availability"].max() > 1:
-    data["availability"] = data["availability"] / 100
+# Clean numeric columns aggressively
+data["availability"] = clean_numeric(data["availability"], percent=True)
+data["conf_win_pct"] = clean_numeric(data["conf_win_pct"], percent=True)
+data["postseason"] = clean_numeric(data["postseason"], percent=False)
+data["conf_rank"] = clean_numeric(data["conf_rank"], percent=False)
+data["postseason_eff"] = clean_numeric(data["postseason_eff"], percent=False)
 
-# Drop rows with missing required values
-data = data.dropna(subset=[
-    "conference",
-    "availability",
-    "conf_win_pct",
-    "postseason",
-    "conf_rank",
-    "postseason_eff"
-])
+# Drop bad rows
+data = data.dropna(subset=required_cols).copy()
 
 # Final types
-data["postseason"] = data["postseason"].astype(int)
-data["conf_rank"] = data["conf_rank"].astype(int)
+data["postseason"] = data["postseason"].round().astype(int)
+data["conf_rank"] = data["conf_rank"].round().astype(int)
 
 # -----------------------
 # CONFERENCE FILTER
@@ -90,6 +115,28 @@ filtered_data = data[data["conference"] == selected_conf].copy()
 if len(filtered_data) < 5:
     st.warning("Not enough data for this conference.")
     st.stop()
+
+# Safety check before training
+X1 = filtered_data[["availability", "conf_win_pct"]].copy()
+y_post = filtered_data["postseason"].copy()
+y_rank = filtered_data["conf_rank"].copy()
+y_eff = filtered_data["postseason_eff"].copy()
+
+# Force float again right before sklearn
+X1["availability"] = pd.to_numeric(X1["availability"], errors="coerce")
+X1["conf_win_pct"] = pd.to_numeric(X1["conf_win_pct"], errors="coerce")
+
+train_df = pd.concat([X1, y_post, y_rank, y_eff], axis=1).dropna()
+
+if len(train_df) < 5:
+    st.warning("Not enough clean rows remain after data cleaning for this conference.")
+    st.write(train_df.head())
+    st.stop()
+
+X1 = train_df[["availability", "conf_win_pct"]]
+y_post = train_df["postseason"].astype(int)
+y_rank = train_df["conf_rank"]
+y_eff = train_df["postseason_eff"]
 
 # -----------------------
 # EFFICIENCY TIER FUNCTION
@@ -109,11 +156,6 @@ def get_tier(eff):
 # -----------------------
 # TRAIN MODELS
 # -----------------------
-X1 = filtered_data[["availability", "conf_win_pct"]]
-y_post = filtered_data["postseason"]
-y_rank = filtered_data["conf_rank"]
-y_eff = filtered_data["postseason_eff"]
-
 model_post = RandomForestClassifier(random_state=42)
 model_rank = RandomForestRegressor(random_state=42)
 model_eff = RandomForestRegressor(random_state=42)
@@ -122,9 +164,9 @@ model_post.fit(X1, y_post)
 model_rank.fit(X1, y_rank)
 model_eff.fit(X1, y_eff)
 
-X2 = filtered_data[["postseason", "conf_rank", "postseason_eff"]]
-y_avail = filtered_data["availability"]
-y_conf = filtered_data["conf_win_pct"]
+X2 = train_df[["postseason", "conf_rank", "postseason_eff"]].copy()
+y_avail = train_df["availability"].copy()
+y_conf = train_df["conf_win_pct"].copy()
 
 model_avail = RandomForestRegressor(random_state=42)
 model_conf = RandomForestRegressor(random_state=42)
@@ -163,15 +205,15 @@ if mode == "Forward":
         availability = availability_pct / 100
         conf_win_pct = conf_win_pct_input / 100
 
-        X = pd.DataFrame([{
+        X_pred = pd.DataFrame([{
             "availability": availability,
             "conf_win_pct": conf_win_pct
         }])
 
-        post = int(model_post.predict(X)[0])
-        prob = float(model_post.predict_proba(X)[0][1])
-        rank = int(round(float(model_rank.predict(X)[0])))
-        eff = float(model_eff.predict(X)[0])
+        post = int(model_post.predict(X_pred)[0])
+        prob = float(model_post.predict_proba(X_pred)[0][1])
+        rank = int(round(float(model_rank.predict(X_pred)[0])))
+        eff = float(model_eff.predict(X_pred)[0])
 
         if eff < 0:
             eff = 0.0
@@ -233,14 +275,14 @@ else:
     )
 
     if st.button("Predict Reverse"):
-        X = pd.DataFrame([{
+        X_pred = pd.DataFrame([{
             "postseason": postseason,
             "conf_rank": conf_rank,
             "postseason_eff": postseason_eff
         }])
 
-        avail_pred = float(model_avail.predict(X)[0])
-        conf_pred = float(model_conf.predict(X)[0])
+        avail_pred = float(model_avail.predict(X_pred)[0])
+        conf_pred = float(model_conf.predict(X_pred)[0])
 
         avail_pred = max(0.0, min(1.0, avail_pred))
         conf_pred = max(0.0, min(1.0, conf_pred))
