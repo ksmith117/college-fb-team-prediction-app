@@ -57,6 +57,31 @@ def get_tier(eff):
         return "Elite"
 
 
+def get_forward_tier_text(tier):
+    if tier == "Below Average":
+        return "This efficiency level suggests a lower likelihood of reaching a conference championship game or the College Football Playoff."
+    elif tier == "Average":
+        return "This efficiency level suggests a moderate postseason profile, but not one that strongly indicates conference championship or College Football Playoff contention."
+    elif tier == "Strong":
+        return "This efficiency level suggests a stronger postseason profile and is more consistent with teams that compete for conference championship game appearances."
+    elif tier == "Elite":
+        return "This efficiency level is most consistent with teams that contend for conference championships and have the strongest likelihood of reaching the College Football Playoff."
+    else:
+        return "This team does not currently project as having a meaningful postseason profile."
+
+
+def get_reverse_tier_text(tier):
+    if tier == "Below Average":
+        return "That efficiency tier would be less consistent with conference championship or College Football Playoff contention."
+    elif tier == "Average":
+        return "That efficiency tier suggests a moderate postseason profile, but not especially strong championship-level performance."
+    elif tier == "Strong":
+        return "That efficiency tier is more consistent with teams that can compete for a conference championship game appearance."
+    elif tier == "Elite":
+        return "That efficiency tier is most consistent with teams competing for conference championships and College Football Playoff spots."
+    else:
+        return "That efficiency tier does not suggest a meaningful postseason profile."
+
 # -----------------------
 # LOAD DATA
 # -----------------------
@@ -82,7 +107,6 @@ data = data.rename(columns={
     "conference_win_percentage": "conf_win_pct",
 })
 
-# Remove duplicate column names after renaming
 data = data.loc[:, ~data.columns.duplicated()].copy()
 
 required_cols = ["conference", "availability", "conf_win_pct", "postseason", "conf_rank", "postseason_eff"]
@@ -100,10 +124,8 @@ data["postseason"] = clean_numeric(data["postseason"])
 data["conf_rank"] = clean_numeric(data["conf_rank"])
 data["postseason_eff"] = clean_numeric(data["postseason_eff"])
 
-# Drop invalid rows
 data = data.dropna(subset=required_cols).copy()
 
-# Final types
 data["postseason"] = data["postseason"].round().astype(int)
 data["conf_rank"] = data["conf_rank"].round().astype(int)
 
@@ -127,7 +149,6 @@ y_post = filtered_data["postseason"].copy()
 y_rank = filtered_data["conf_rank"].copy()
 y_eff = filtered_data["postseason_eff"].copy()
 
-# Force numeric one more time right before training
 X1["availability"] = pd.to_numeric(X1["availability"], errors="coerce")
 X1["conf_win_pct"] = pd.to_numeric(X1["conf_win_pct"], errors="coerce")
 y_post = pd.to_numeric(y_post, errors="coerce")
@@ -219,6 +240,7 @@ if mode == "Forward":
             eff = 0.0
 
         tier = get_tier(eff)
+        tier_text = get_forward_tier_text(tier)
 
         st.write("### Results")
         st.write(f"**Conference:** {selected_conf}")
@@ -234,9 +256,8 @@ if mode == "Forward":
             f"and a {conf_win_pct_input}% conference win rate has a "
             f"{round(prob * 100, 1)}% chance of making a bowl game. "
             f"They are projected to finish around {rank} in the conference. "
-            f"With a postseason efficiency score of {round(eff, 3)}, this team is performing at a '{tier}' level, "
-            f"which is associated with a stronger likelihood of reaching a conference championship game "
-            f"and potentially the College Football Playoff."
+            f"With a postseason efficiency score of {round(eff, 3)}, this team is performing at a '{tier}' level. "
+            f"{tier_text}"
         )
 
         st.markdown("### Metric Explanations")
@@ -303,6 +324,7 @@ else:
         conf_pred_pct = int(round(conf_pred * 100))
 
         tier = get_tier(postseason_eff)
+        tier_text = get_reverse_tier_text(tier)
 
         st.write("### Results")
         st.write(f"**Conference:** {selected_conf}")
@@ -315,8 +337,7 @@ else:
             f"To reach a bowl game outcome of {postseason} with a conference rank of {conf_rank}, "
             f"a team would likely need about {avail_pred_pct}% availability and about a "
             f"{conf_pred_pct}% conference win rate. "
-            f"A postseason efficiency value in the '{tier}' range would be more consistent with teams "
-            f"that can compete for a conference championship and potentially reach the College Football Playoff."
+            f"A postseason efficiency value in the '{tier}' range would indicate that {tier_text}"
         )
 
         st.markdown("### Metric Explanations")
