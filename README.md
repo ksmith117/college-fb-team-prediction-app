@@ -1,6 +1,6 @@
 # College Football Team Prediction App
 
-This project is a machine learning web application that models relationships between team performance metrics and postseason outcomes. The app allows users to simulate forward and reverse predictions within specific conferences using real data from the 2025–2026 college football season.
+This project is a machine learning web application that models relationships between team performance metrics and postseason outcomes in college football. The app allows users to generate forward and reverse predictions within specific conferences using real data from the 2025–2026 season.
 
 ---
 
@@ -14,7 +14,7 @@ The application predicts:
 - Postseason efficiency
 - Efficiency tier classification
 
-It also supports reverse predictions, estimating performance inputs based on desired outcomes.
+In this model, **postseason qualification represents making a bowl game**.
 
 ---
 
@@ -49,12 +49,10 @@ Outputs:
 
 ## Data Sources
 
-## 🏈 Data Sources
-
 - Data was compiled from official athletics websites for the **Power 4 conferences (ACC, Big Ten, Big 12, SEC)** during the 2025–2026 college football season
-- Postseason performance data was aggregated and standardized across conferences to create a unified modeling dataset
-- Postseason results were weighted based on game importance (e.g., bowl games vs playoff games)
-- Metrics were aligned across sources to ensure consistency in analysis
+- Postseason performance data was aggregated and standardized across conferences
+- Postseason results were weighted based on game importance (e.g., bowl games, conference championship implications, College Football Playoff relevance)
+- Metrics were aligned across sources to ensure consistency
 
 ---
 
@@ -62,16 +60,18 @@ Outputs:
 
 Postseason efficiency is a custom metric designed to capture both performance and level of competition.
 
-It is defined as: Efficiency = Weighted Win % x log(Total Postseason Weight)
+It is defined as: Efficiency = Weighted Win % × log(Total Postseason Weight)
 
 
 Where:
-- Weighted Win % = weighted postseason success rate
-- Total Weight = cumulative importance of postseason games
+- **Weighted Win %** = postseason success adjusted for game importance
+- **Total Weight** = cumulative importance of postseason games
 
 This metric rewards teams that:
-- Perform well
-- Sustain performance across high-impact games
+- Perform well in postseason settings
+- Sustain performance across higher-impact games
+
+Higher efficiency values are more consistent with teams that compete for conference championship appearances and the College Football Playoff.
 
 ---
 
@@ -87,7 +87,7 @@ Efficiency values are categorized into tiers based on observed data distribution
 | 1.25 – 1.99 | Strong |
 | 2.00+ | Elite |
 
-These ranges are data-driven and reflect relative performance within the dataset.
+These ranges are specific to the football dataset.
 
 ---
 
@@ -143,7 +143,7 @@ Weak predictive performance, indicating availability cannot be reliably inferred
 ## Limitations
 
 - Predictions are based on historical patterns and should be interpreted as estimates
-- Reverse models are less reliable for certain variables (e.g., availability)
+- Reverse models are less reliable for certain variables
 - Efficiency is a custom metric and may not capture all aspects of team performance
 - Differences in conference reporting may affect comparability
 
@@ -156,23 +156,20 @@ Weak predictive performance, indicating availability cannot be reliably inferred
 - Pandas
 - Scikit-learn
 - Google Sheets (data preparation)
-- Looker Studio (data visualization)
 
 ---
 
 ## Purpose
 
 This project demonstrates:
-- Feature engineering (custom efficiency metric)
+- Feature engineering using a custom efficiency metric
 - Supervised machine learning (classification and regression)
 - Model evaluation and interpretation
-- Data visualization and dashboarding
-- Full pipeline development from raw data to deployed application
+- Applied sports analytics
+- End-to-end workflow from raw data to deployed application
 
 ---
 
 ## Live App
 
-https://team-prediction-app-gy6skrf3epakqspwxgkhhx.streamlit.app/#purpose
-
----
+(https://cfb-team-prediction-app-gy6skrf3epakqspwxgkhhx.streamlit.app/)
