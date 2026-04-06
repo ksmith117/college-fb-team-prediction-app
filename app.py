@@ -29,15 +29,6 @@ This tool models relationships between team performance and postseason outcomes.
 # HELPERS
 # -----------------------
 def clean_numeric(series, percent=False):
-    """
-    Force a column to numeric by:
-    - converting to string
-    - stripping spaces
-    - removing percent signs and commas
-    - removing any non-numeric characters except . and -
-    - converting to numeric
-    - dividing by 100 if percent=True and values look like 0-100 scale
-    """
     s = (
         series.astype(str)
         .str.strip()
@@ -47,13 +38,10 @@ def clean_numeric(series, percent=False):
     )
     s = pd.to_numeric(s, errors="coerce")
 
-    if percent:
-        # If values are stored like 91.13 instead of 0.9113
-        if s.dropna().max() is not None and len(s.dropna()) > 0 and s.dropna().max() > 1:
-            s = s / 100
+    if percent and len(s.dropna()) > 0 and s.dropna().max() > 1:
+        s = s / 100
 
     return s
-
 
 # -----------------------
 # LOAD DATA
@@ -68,7 +56,7 @@ data.columns = (
     .str.replace(r"[^\w_]", "", regex=True)
 )
 
-# Normalize known column name variants
+# Standardize common column name variants
 data = data.rename(columns={
     "conference_ranking": "conf_rank",
     "conference_rank": "conf_rank",
@@ -79,25 +67,27 @@ data = data.rename(columns={
     "conf_win_percentage": "conf_win_pct",
     "conference_win_pct": "conf_win_pct",
     "conference_win_percentage": "conf_win_pct",
-    "win_percent": "win_pct",
 })
+
+# Remove duplicate column names after renaming
+data = data.loc[:, ~data.columns.duplicated()].copy()
 
 required_cols = ["conference", "availability", "conf_win_pct", "postseason", "conf_rank", "postseason_eff"]
 
-missing_cols = [col for col in required_cols if col not in data.columns]
+missing_cols = [c for c in required_cols if c not in data.columns]
 if missing_cols:
-    st.error(f"Missing required columns in CSV: {missing_cols}")
+    st.error(f"Missing required columns: {missing_cols}")
     st.write("Available columns:", data.columns.tolist())
     st.stop()
 
-# Clean numeric columns aggressively
+# Clean numeric columns
 data["availability"] = clean_numeric(data["availability"], percent=True)
 data["conf_win_pct"] = clean_numeric(data["conf_win_pct"], percent=True)
-data["postseason"] = clean_numeric(data["postseason"], percent=False)
-data["conf_rank"] = clean_numeric(data["conf_rank"], percent=False)
-data["postseason_eff"] = clean_numeric(data["postseason_eff"], percent=False)
+data["postseason"] = clean_numeric(data["postseason"])
+data["conf_rank"] = clean_numeric(data["conf_rank"])
+data["postseason_eff"] = clean_numeric(data["postseason_eff"])
 
-# Drop bad rows
+# Drop invalid rows
 data = data.dropna(subset=required_cols).copy()
 
 # Final types
@@ -116,27 +106,34 @@ if len(filtered_data) < 5:
     st.warning("Not enough data for this conference.")
     st.stop()
 
-# Safety check before training
+# -----------------------
+# PREP TRAINING DATA
+# -----------------------
 X1 = filtered_data[["availability", "conf_win_pct"]].copy()
 y_post = filtered_data["postseason"].copy()
 y_rank = filtered_data["conf_rank"].copy()
 y_eff = filtered_data["postseason_eff"].copy()
 
-# Force float again right before sklearn
+# Force numeric one more time right before training
 X1["availability"] = pd.to_numeric(X1["availability"], errors="coerce")
 X1["conf_win_pct"] = pd.to_numeric(X1["conf_win_pct"], errors="coerce")
+y_post = pd.to_numeric(y_post, errors="coerce")
+y_rank = pd.to_numeric(y_rank, errors="coerce")
+y_eff = pd.to_numeric(y_eff, errors="coerce")
 
-train_df = pd.concat([X1, y_post, y_rank, y_eff], axis=1).dropna()
+train_df = pd.concat([X1, y_post.rename("postseason"), y_rank.rename("conf_rank"), y_eff.rename("postseason_eff")], axis=1)
+train_df = train_df.dropna().copy()
 
 if len(train_df) < 5:
-    st.warning("Not enough clean rows remain after data cleaning for this conference.")
+    st.error("Not enough clean rows remain after data cleaning.")
     st.write(train_df.head())
+    st.write(train_df.dtypes)
     st.stop()
 
-X1 = train_df[["availability", "conf_win_pct"]]
+X1 = train_df[["availability", "conf_win_pct"]].astype(float)
 y_post = train_df["postseason"].astype(int)
-y_rank = train_df["conf_rank"]
-y_eff = train_df["postseason_eff"]
+y_rank = train_df["conf_rank"].astype(float)
+y_eff = train_df["postseason_eff"].astype(float)
 
 # -----------------------
 # EFFICIENCY TIER FUNCTION
@@ -156,23 +153,35 @@ def get_tier(eff):
 # -----------------------
 # TRAIN MODELS
 # -----------------------
-model_post = RandomForestClassifier(random_state=42)
-model_rank = RandomForestRegressor(random_state=42)
-model_eff = RandomForestRegressor(random_state=42)
+try:
+    model_post = RandomForestClassifier(random_state=42)
+    model_rank = RandomForestRegressor(random_state=42)
+    model_eff = RandomForestRegressor(random_state=42)
 
-model_post.fit(X1, y_post)
-model_rank.fit(X1, y_rank)
-model_eff.fit(X1, y_eff)
+    model_post.fit(X1, y_post)
+    model_rank.fit(X1, y_rank)
+    model_eff.fit(X1, y_eff)
 
-X2 = train_df[["postseason", "conf_rank", "postseason_eff"]].copy()
-y_avail = train_df["availability"].copy()
-y_conf = train_df["conf_win_pct"].copy()
+    X2 = train_df[["postseason", "conf_rank", "postseason_eff"]].astype(float)
+    y_avail = train_df["availability"].astype(float)
+    y_conf = train_df["conf_win_pct"].astype(float)
 
-model_avail = RandomForestRegressor(random_state=42)
-model_conf = RandomForestRegressor(random_state=42)
+    model_avail = RandomForestRegressor(random_state=42)
+    model_conf = RandomForestRegressor(random_state=42)
 
-model_avail.fit(X2, y_avail)
-model_conf.fit(X2, y_conf)
+    model_avail.fit(X2, y_avail)
+    model_conf.fit(X2, y_conf)
+
+except Exception as e:
+    st.error("Model training failed after cleaning.")
+    st.write("X1 dtypes:")
+    st.write(X1.dtypes)
+    st.write("Sample of X1:")
+    st.write(X1.head())
+    st.write("Unique problematic values check:")
+    st.write(filtered_data[["availability", "conf_win_pct"]].head(10))
+    st.exception(e)
+    st.stop()
 
 # -----------------------
 # MODE SWITCH
