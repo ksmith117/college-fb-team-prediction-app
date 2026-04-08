@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+import numpy as np
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 
 st.set_page_config(page_title="College Football Prediction App", layout="centered")
@@ -22,6 +23,7 @@ This tool models relationships between team performance and postseason outcomes.
 - Predictions are based on historical patterns, not guarantees
 - Reverse predictions are approximate
 - Source data was compiled from official Power 4 conference athletics websites for the 2025–2026 football season
+- Postseason qualification in this model represents making a bowl game
 - Postseason efficiency tiers are based on the observed distribution in the dataset
 """)
 
@@ -72,15 +74,29 @@ def get_forward_tier_text(tier):
 
 def get_reverse_tier_text(tier):
     if tier == "Below Average":
-        return "That efficiency tier would be less consistent with conference championship or College Football Playoff contention."
+        return "that efficiency tier would be less consistent with conference championship or College Football Playoff contention."
     elif tier == "Average":
-        return "That efficiency tier suggests a moderate postseason profile, but not especially strong championship-level performance."
+        return "that efficiency tier suggests a moderate postseason profile, but not especially strong championship-level performance."
     elif tier == "Strong":
-        return "That efficiency tier is more consistent with teams that can compete for a conference championship game appearance."
+        return "that efficiency tier is more consistent with teams that can compete for a conference championship game appearance."
     elif tier == "Elite":
-        return "That efficiency tier is most consistent with teams competing for conference championships and College Football Playoff spots."
+        return "that efficiency tier is most consistent with teams competing for conference championships and College Football Playoff spots."
     else:
-        return "That efficiency tier does not suggest a meaningful postseason profile."
+        return "that efficiency tier does not suggest a meaningful postseason profile."
+
+
+def find_similar_teams(df, avail, win_pct, rank, eff, n=2):
+    temp = df.copy()
+
+    temp["distance"] = (
+        (temp["availability"] - avail) ** 2 +
+        (temp["conf_win_pct"] - win_pct) ** 2 +
+        ((temp["conf_rank"] - rank) / 10) ** 2 +
+        (temp["postseason_eff"] - eff) ** 2
+    )
+
+    return temp.sort_values("distance").head(n)
+
 
 # -----------------------
 # LOAD DATA
@@ -105,11 +121,12 @@ data = data.rename(columns={
     "conf_win_percentage": "conf_win_pct",
     "conference_win_pct": "conf_win_pct",
     "conference_win_percentage": "conf_win_pct",
+    "school": "team"
 })
 
 data = data.loc[:, ~data.columns.duplicated()].copy()
 
-required_cols = ["conference", "availability", "conf_win_pct", "postseason", "conf_rank", "postseason_eff"]
+required_cols = ["team", "conference", "availability", "conf_win_pct", "postseason", "conf_rank", "postseason_eff"]
 
 missing_cols = [c for c in required_cols if c not in data.columns]
 if missing_cols:
@@ -117,7 +134,6 @@ if missing_cols:
     st.write("Available columns:", data.columns.tolist())
     st.stop()
 
-# Clean numeric columns
 data["availability"] = clean_numeric(data["availability"], percent=True)
 data["conf_win_pct"] = clean_numeric(data["conf_win_pct"], percent=True)
 data["postseason"] = clean_numeric(data["postseason"])
@@ -125,7 +141,6 @@ data["conf_rank"] = clean_numeric(data["conf_rank"])
 data["postseason_eff"] = clean_numeric(data["postseason_eff"])
 
 data = data.dropna(subset=required_cols).copy()
-
 data["postseason"] = data["postseason"].round().astype(int)
 data["conf_rank"] = data["conf_rank"].round().astype(int)
 
@@ -133,12 +148,17 @@ data["conf_rank"] = data["conf_rank"].round().astype(int)
 # CONFERENCE FILTER
 # -----------------------
 conferences = sorted(data["conference"].dropna().unique())
+conferences.insert(0, "ALL")
+
 selected_conf = st.selectbox("Select Conference", conferences)
 
-filtered_data = data[data["conference"] == selected_conf].copy()
+if selected_conf == "ALL":
+    filtered_data = data.copy()
+else:
+    filtered_data = data[data["conference"] == selected_conf].copy()
 
 if len(filtered_data) < 5:
-    st.warning("Not enough data for this conference.")
+    st.warning("Not enough data for this selection.")
     st.stop()
 
 # -----------------------
@@ -156,12 +176,7 @@ y_rank = pd.to_numeric(y_rank, errors="coerce")
 y_eff = pd.to_numeric(y_eff, errors="coerce")
 
 train_df = pd.concat(
-    [
-        X1,
-        y_post.rename("postseason"),
-        y_rank.rename("conf_rank"),
-        y_eff.rename("postseason_eff")
-    ],
+    [X1, y_post.rename("postseason"), y_rank.rename("conf_rank"), y_eff.rename("postseason_eff")],
     axis=1
 ).dropna().copy()
 
@@ -206,21 +221,8 @@ mode = st.radio("Choose Prediction Mode", ["Forward", "Reverse"])
 if mode == "Forward":
     st.subheader(f"Forward Prediction — {selected_conf}")
 
-    availability_pct = st.number_input(
-        "Availability (%)",
-        min_value=0,
-        max_value=100,
-        value=90,
-        step=1
-    )
-
-    conf_win_pct_input = st.number_input(
-        "Conference Win % (%)",
-        min_value=0,
-        max_value=100,
-        value=60,
-        step=1
-    )
+    availability_pct = st.number_input("Availability (%)", min_value=0, max_value=100, value=90, step=1)
+    conf_win_pct_input = st.number_input("Conference Win % (%)", min_value=0, max_value=100, value=60, step=1)
 
     if st.button("Predict Forward"):
         availability = availability_pct / 100
@@ -261,21 +263,23 @@ if mode == "Forward":
         )
 
         st.markdown("### Metric Explanations")
-        st.write(
-            f"**Postseason Qualification ({post})**: Indicates whether the model predicts the team will make a bowl game (1 = yes, 0 = no)."
-        )
-        st.write(
-            f"**Postseason Qualification Probability ({round(prob, 3)})**: The model's confidence that the team will make a bowl game."
-        )
-        st.write(
-            f"**Conference Rank ({rank})**: The expected final standing within the conference."
-        )
-        st.write(
-            f"**Postseason Efficiency ({round(eff, 3)})**: A custom metric combining postseason success and game importance. Higher values suggest stronger performance in high-stakes games."
-        )
-        st.write(
-            f"**Efficiency Tier ({tier})**: A category that makes the efficiency score easier to interpret."
-        )
+        st.write(f"**Postseason Qualification ({post})**: Indicates whether the model predicts the team will make a bowl game (1 = yes, 0 = no).")
+        st.write(f"**Postseason Qualification Probability ({round(prob, 3)})**: The model's confidence that the team will make a bowl game.")
+        st.write(f"**Conference Rank ({rank})**: The expected final standing within the conference.")
+        st.write(f"**Postseason Efficiency ({round(eff, 3)})**: A custom metric combining postseason success and game importance. Higher values suggest stronger performance in high-stakes games.")
+        st.write(f"**Efficiency Tier ({tier})**: A category that makes the efficiency score easier to interpret.")
+
+        st.markdown("### Similar Teams")
+        similar = find_similar_teams(filtered_data, availability, conf_win_pct, rank, eff)
+
+        for _, row in similar.iterrows():
+            st.write(
+                f"**{row['team']}** ({row['conference']}) — "
+                f"Availability: {round(row['availability'] * 100)}%, "
+                f"Conference Win %: {round(row['conf_win_pct'] * 100)}%, "
+                f"Rank: {int(row['conf_rank'])}, "
+                f"Eff: {round(row['postseason_eff'], 3)}"
+            )
 
 # -----------------------
 # REVERSE MODE
@@ -283,29 +287,9 @@ if mode == "Forward":
 else:
     st.subheader(f"Reverse Prediction — {selected_conf}")
 
-    postseason = st.number_input(
-        "Postseason (0 or 1)",
-        min_value=0,
-        max_value=1,
-        value=1,
-        step=1
-    )
-
-    conf_rank = st.number_input(
-        "Conference Rank",
-        min_value=1,
-        max_value=25,
-        value=5,
-        step=1
-    )
-
-    postseason_eff = st.number_input(
-        "Postseason Efficiency",
-        min_value=0.0,
-        max_value=4.5,
-        value=1.0,
-        step=0.01
-    )
+    postseason = st.number_input("Postseason (0 or 1)", min_value=0, max_value=1, value=1, step=1)
+    conf_rank = st.number_input("Conference Rank", min_value=1, max_value=25, value=5, step=1)
+    postseason_eff = st.number_input("Postseason Efficiency", min_value=0.0, max_value=4.5, value=1.0, step=0.01)
 
     if st.button("Predict Reverse"):
         X_pred = pd.DataFrame([{
@@ -341,15 +325,9 @@ else:
         )
 
         st.markdown("### Metric Explanations")
-        st.write(
-            f"**Predicted Availability ({avail_pred_pct}%)**: The estimated player availability associated with this outcome profile."
-        )
-        st.write(
-            f"**Predicted Conference Win % ({conf_pred_pct}%)**: The estimated in-conference win rate associated with this outcome profile."
-        )
-        st.write(
-            f"**Efficiency Tier ({tier})**: The selected postseason efficiency translated into a performance category."
-        )
+        st.write(f"**Predicted Availability ({avail_pred_pct}%)**: The estimated player availability associated with this outcome profile.")
+        st.write(f"**Predicted Conference Win % ({conf_pred_pct}%)**: The estimated in-conference win rate associated with this outcome profile.")
+        st.write(f"**Efficiency Tier ({tier})**: The selected postseason efficiency translated into a performance category.")
 
 st.markdown("""
 ---
