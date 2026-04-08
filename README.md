@@ -1,6 +1,6 @@
 # College Football Team Prediction App
 
-This project is a machine learning web application that models relationships between team performance metrics and postseason outcomes in college football. The app allows users to generate forward and reverse predictions within specific conferences using real data from the 2025–2026 season.
+This project is a machine learning web application that models relationships between team performance metrics and postseason outcomes in college football. The app allows users to generate forward and reverse predictions within specific conferences or across all conferences using real data from the 2025–2026 season.
 
 ---
 
@@ -15,6 +15,8 @@ The application predicts:
 - Efficiency tier classification
 
 In this model, **postseason qualification represents making a bowl game**.
+
+The app also includes a comparison feature that identifies real teams with similar projected profiles.
 
 ---
 
@@ -31,8 +33,7 @@ Outputs:
 - Conference Rank
 - Postseason Efficiency
 - Efficiency Tier
-
----
+- Two similar real teams based on predicted profile
 
 ### Reverse Prediction
 Inputs:
@@ -45,13 +46,17 @@ Outputs:
 - Predicted Conference Win Percentage
 - Efficiency Tier
 
+### Conference Scope
+Users can run predictions within:
+- A single conference
+- **All conferences combined**
+
 ---
 
 ## Data Sources
 
-- Data was compiled from official athletics websites for the **Power 4 conferences (ACC, Big Ten, Big 12, SEC)** during the 2025–2026 college football season
+- Data was compiled from official athletics websites for the Power 4 conferences (ACC, Big Ten, Big 12, SEC) during the 2025–2026 college football season
 - Postseason performance data was aggregated and standardized across conferences
-- Postseason results were weighted based on game importance (e.g., bowl games, conference championship implications, College Football Playoff relevance)
 - Metrics were aligned across sources to ensure consistency
 
 ---
@@ -60,24 +65,23 @@ Outputs:
 
 Postseason efficiency is a custom metric designed to capture both performance and level of competition.
 
-It is defined as: Efficiency = Weighted Win % × log(Total Postseason Weight)
+Formula:
 
+Efficiency = Weighted Win % × log(Total Postseason Weight)
 
 Where:
-- **Weighted Win %** = postseason success adjusted for game importance
-- **Total Weight** = cumulative importance of postseason games
+- Weighted Win % = postseason success adjusted for game importance
+- Total Postseason Weight = cumulative importance of postseason opportunities
 
 This metric rewards teams that:
 - Perform well in postseason settings
 - Sustain performance across higher-impact games
 
-Higher efficiency values are more consistent with teams that compete for conference championship appearances and the College Football Playoff.
+Higher efficiency values are more consistent with teams that compete for conference championships and the College Football Playoff.
 
 ---
 
 ## Efficiency Tier Classification
-
-Efficiency values are categorized into tiers based on observed data distribution:
 
 | Range | Tier |
 |------|------|
@@ -87,65 +91,49 @@ Efficiency values are categorized into tiers based on observed data distribution
 | 1.25 – 1.99 | Strong |
 | 2.00+ | Elite |
 
-These ranges are specific to the football dataset.
+These ranges are based on the observed postseason efficiency distribution in the dataset.
 
 ---
 
 ## Model Performance
 
-### Postseason Classification Model
-- Accuracy: **0.857**
-- Precision: **0.889**
-- Recall: **0.889**
-- F1 Score: **0.889**
-- ROC AUC: **0.933**
+### Postseason Classifier
+- Accuracy: 0.857
+- Precision: 0.889
+- Recall: 0.889
+- F1 Score: 0.889
+- ROC AUC: 0.933
 
-This model demonstrates strong ability to distinguish between postseason and non-postseason teams.
+### Conference Rank Regressor
+- MAE: 1.246
+- RMSE: 1.447
+- R²: 0.799
 
----
-
-### Conference Rank Model
-- MAE: **1.246**
-- RMSE: **1.447**
-- R²: **0.799**
-
-The model predicts conference rank within approximately one position on average.
-
----
-
-### Postseason Efficiency Model
-- MAE: **0.126**
-- RMSE: **0.223**
-- R²: **-0.111**
-
-Performance was limited, suggesting that efficiency is influenced by factors not fully captured by the input variables.
-
----
+### Postseason Efficiency Regressor
+- MAE: 0.126
+- RMSE: 0.223
+- R²: -0.111
 
 ### Reverse Models
 
-#### Conference Win Percentage
-- MAE: **0.057**
-- RMSE: **0.065**
-- R²: **0.901**
+Conference Win %:
+- MAE: 0.057
+- RMSE: 0.065
+- R²: 0.901
 
-Strong predictive performance.
-
-#### Availability
-- MAE: **0.036**
-- RMSE: **0.050**
-- R²: **-0.797**
-
-Weak predictive performance, indicating availability cannot be reliably inferred from outcomes.
+Availability:
+- MAE: 0.036
+- RMSE: 0.050
+- R²: -0.797
 
 ---
 
 ## Limitations
 
-- Predictions are based on historical patterns and should be interpreted as estimates
-- Reverse models are less reliable for certain variables
-- Efficiency is a custom metric and may not capture all aspects of team performance
-- Differences in conference reporting may affect comparability
+- Predictions are based on historical patterns and are not guarantees
+- Reverse predictions are approximate
+- Efficiency is a custom metric and may not capture all performance factors
+- Differences in conference reporting may affect consistency
 
 ---
 
@@ -155,18 +143,19 @@ Weak predictive performance, indicating availability cannot be reliably inferred
 - Streamlit
 - Pandas
 - Scikit-learn
-- Google Sheets (data preparation)
+- Google Sheets
 
 ---
 
 ## Purpose
 
 This project demonstrates:
-- Feature engineering using a custom efficiency metric
-- Supervised machine learning (classification and regression)
+- Feature engineering using a custom metric
+- Classification and regression modeling
 - Model evaluation and interpretation
 - Applied sports analytics
-- End-to-end workflow from raw data to deployed application
+- Similarity-based team comparison
+- End-to-end deployment workflow
 
 ---
 
